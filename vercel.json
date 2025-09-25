@@ -1,26 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/screener.js": {
-      "runtime": "@vercel/node"
-    },
-    "api/health.js": {
-      "runtime": "@vercel/node"
-    },
-    "api/market-data.js": {
-      "runtime": "@vercel/node"
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
   "builds": [
     {
       "src": "api/*.js",
@@ -33,6 +12,16 @@
     {
       "src": "index/**",
       "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ]
 }
