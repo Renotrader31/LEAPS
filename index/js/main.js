@@ -233,6 +233,7 @@ class LEAPSScreenerApp {
      * Display screening results
      */
     displayResults(results) {
+        this.createLeapsSummary(results);
         this.createSummaryCards(results);
         this.createStrategyChart(results);
         this.createResultsTable(results.finalResults);
@@ -246,6 +247,42 @@ class LEAPSScreenerApp {
             behavior: 'smooth', 
             block: 'start' 
         });
+    }
+
+    /**
+     * Create LEAPS analysis summary
+     */
+    createLeapsSummary(results) {
+        const container = document.getElementById('summaryCards');
+        
+        // Add LEAPS summary before cards
+        const leapsSummary = document.createElement('div');
+        leapsSummary.className = 'leaps-summary mb-6';
+        leapsSummary.innerHTML = `
+            <h3 class="text-lg font-semibold mb-2">
+                <i class="fas fa-chart-line mr-2"></i>
+                Professional LEAPS Analysis Complete
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                    <strong>${results.stocksAnalyzed || 0}</strong> stocks analyzed with ${results.dataSource === 'live' ? 'live market data' : 'professional demo data'}
+                </div>
+                <div>
+                    <strong>${results.leapsMetrics?.totalRecommendations || 0}</strong> actionable LEAPS trade recommendations generated
+                </div>
+                <div>
+                    Processing completed in <strong>${results.processingTimeMs || 0}ms</strong> 
+                    (${results.performance?.successRate || '100'}% success rate)
+                </div>
+            </div>
+            ${results.leapsMetrics?.topStrategy ? `
+                <div class="mt-2 text-sm opacity-90">
+                    Top strategy: <strong>${this.formatStrategyName(results.leapsMetrics.topStrategy)}</strong>
+                </div>
+            ` : ''}
+        `;
+        
+        container.parentNode.insertBefore(leapsSummary, container);
     }
 
     /**
@@ -290,21 +327,21 @@ class LEAPSScreenerApp {
                 color: 'blue'
             },
             {
-                title: 'Stock Replacement',
-                value: results.strategyCounts.stock_replacement,
-                icon: 'fas fa-exchange-alt',
+                title: 'With LEAPS Recommendations',
+                value: results.leapsMetrics?.stocksWithRecommendations || 0,
+                icon: 'fas fa-chart-line',
                 color: 'green'
             },
             {
-                title: 'PMCC Candidates',
-                value: results.strategyCounts.pmcc,
-                icon: 'fas fa-coins',
+                title: 'Total Trade Ideas',
+                value: results.leapsMetrics?.totalRecommendations || 0,
+                icon: 'fas fa-lightbulb',
                 color: 'yellow'
             },
             {
-                title: 'Growth LEAPS',
-                value: results.strategyCounts.growth,
-                icon: 'fas fa-rocket',
+                title: 'Stock Replacement',
+                value: results.strategyCounts.stock_replacement,
+                icon: 'fas fa-exchange-alt',
                 color: 'purple'
             }
         ];
@@ -433,10 +470,10 @@ class LEAPSScreenerApp {
             return;
         }
 
-        // Create table headers
+        // Create table headers with LEAPS columns
         const headers = [
             'Ticker', 'Company', 'Price', 'Market Cap', 'P/E', 'ROE (%)', 
-            'Beta', 'Revenue Growth (%)', 'Upside (%)', 'Volume'
+            'Beta', 'Revenue Growth (%)', 'Upside (%)', 'LEAPS Strategy', 'Trade Recommendation'
         ];
 
         const headerRow = document.createElement('tr');
@@ -461,6 +498,16 @@ class LEAPSScreenerApp {
     createTableRow(stock, index) {
         const row = document.createElement('tr');
         row.className = 'table-row-hover';
+
+        // Get LEAPS strategy information
+        const topStrategy = stock.recommendations && stock.recommendations.length > 0 ? 
+            stock.recommendations[0] : null;
+        
+        const leapsStrategy = topStrategy ? 
+            this.formatStrategyName(topStrategy.strategy) : 
+            'No LEAPS';
+            
+        const tradeRecommendation = this.formatTradeRecommendation(topStrategy);
 
         const cells = [
             // Ticker
@@ -516,9 +563,16 @@ class LEAPSScreenerApp {
                 </span>
             </td>`,
             
-            // Volume
-            `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                ${this.screener.formatLargeNumber(stock.volume)}
+            // LEAPS Strategy
+            `<td class="px-6 py-4 whitespace-nowrap text-sm">
+                <span class="strategy-badge ${topStrategy ? 'strategy-available' : 'strategy-none'}">
+                    ${leapsStrategy}
+                </span>
+            </td>`,
+            
+            // Trade Recommendation
+            `<td class="px-6 py-4 text-sm">
+                ${tradeRecommendation}
             </td>`
         ];
 
@@ -596,6 +650,74 @@ class LEAPSScreenerApp {
      */
     hideError() {
         document.getElementById('errorMessage').classList.add('hidden');
+    }
+
+    /**
+     * Format strategy name for display
+     */
+    formatStrategyName(strategy) {
+        const strategyNames = {
+            'stock_replacement': 'Stock Replace',
+            'pmcc': 'PMCC',
+            'growth': 'Growth LEAPS',
+            'value': 'Value LEAPS',
+            'protective_put': 'Protective Put'
+        };
+        return strategyNames[strategy] || strategy;
+    }
+
+    /**
+     * Format trade recommendation for display
+     */
+    formatTradeRecommendation(recommendation) {
+        if (!recommendation || !recommendation.setup) {
+            return '<span class="text-gray-400">No recommendation</span>';
+        }
+
+        const setup = recommendation.setup;
+        let html = '<div class="trade-rec">';
+        
+        if (setup.longLeg && setup.shortLeg) {
+            // PMCC or spread trade
+            html += `
+                <div class="text-xs font-medium text-gray-700 mb-1">PMCC Setup:</div>
+                <div class="text-xs">
+                    <div class="text-green-600">BUY ${setup.longLeg.strike} Call @ $${setup.longLeg.price.toFixed(2)}</div>
+                    <div class="text-red-600">SELL ${setup.shortLeg.strike} Call @ $${setup.shortLeg.price.toFixed(2)}</div>
+                </div>
+                <div class="text-xs text-gray-600 mt-1">
+                    Net: $${(setup.longLeg.price - setup.shortLeg.price).toFixed(2)} | 
+                    Return: ${recommendation.economics?.expectedReturn?.toFixed(1) || 'N/A'}%
+                </div>
+            `;
+        } else {
+            // Simple call/put trade
+            const action = setup.action === 'BUY_TO_OPEN' ? 'BUY' : 'SELL';
+            const color = action === 'BUY' ? 'text-green-600' : 'text-red-600';
+            
+            html += `
+                <div class="text-xs font-medium text-gray-700 mb-1">${this.formatStrategyName(recommendation.strategy)}:</div>
+                <div class="text-xs ${color}">
+                    ${action} ${setup.strike} ${setup.instrument} @ $${setup.price.toFixed(2)}
+                </div>
+                <div class="text-xs text-gray-600 mt-1">
+                    ${recommendation.economics?.leverage ? `${recommendation.economics.leverage.toFixed(1)}x Leverage | ` : ''}
+                    Return: ${recommendation.economics?.expectedReturn?.toFixed(1) || 'N/A'}%
+                </div>
+            `;
+        }
+        
+        // Add risk level
+        html += `
+            <div class="text-xs mt-1">
+                <span class="risk-badge risk-${recommendation.riskLevel?.toLowerCase().replace(/[^a-z]/g, '') || 'medium'}">
+                    ${recommendation.riskLevel || 'Medium'}
+                </span>
+            </div>
+        `;
+        
+        html += '</div>';
+        return html;
     }
 }
 
