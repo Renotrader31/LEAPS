@@ -129,12 +129,19 @@ class LEAPSScreenerApp {
             const dataSource = document.querySelector('input[name="dataSource"]:checked')?.value || 'mock';
 
             // Validate inputs
-            if (!this.validateCriteria(criteria)) {
+            console.log('Collected criteria:', criteria);
+            const isValid = this.validateCriteria(criteria);
+            console.log('Validation result:', isValid);
+            
+            if (!isValid) {
+                console.error('Validation failed for criteria:', criteria);
                 throw new Error('Please check your input parameters and try again.');
             }
 
             // Run screening via API
+            console.log('Calling API with criteria:', criteria, 'dataSource:', dataSource);
             const results = await this.runScreeningAPI(criteria, dataSource);
+            console.log('API results received:', results);
             this.currentResults = results;
 
             // Display results
@@ -216,9 +223,9 @@ class LEAPSScreenerApp {
             criteria.minMarketCap >= 0 &&
             criteria.minVolume >= 0 &&
             criteria.maxPE > 0 &&
-            criteria.minROE >= 0 &&
-            criteria.minRevGrowth >= 0 &&
-            criteria.minUpside >= 0
+            criteria.minROE >= -100 &&  // Allow negative ROE
+            criteria.minRevGrowth >= -100 &&  // Allow negative revenue growth
+            criteria.minUpside >= -100  // Allow negative upside
         );
     }
 
