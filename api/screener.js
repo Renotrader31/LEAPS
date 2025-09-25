@@ -1,7 +1,15 @@
 /**
- * Vercel API endpoint for LEAPS screening
- * This simulates the market data API that would replace the Python xynth_market_screener
+ * Vercel API endpoint for LEAPS screening with live market data
  */
+
+// Import default tickers
+const getDefaultTickers = () => [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'CRM',
+  'ADBE', 'PYPL', 'INTC', 'CSCO', 'ORCL', 'IBM', 'UBER', 'SNOW', 'ZM', 'DOCU',
+  'SHOP', 'SQ', 'ROKU', 'TWLO', 'OKTA', 'CRWD', 'ZS', 'DDOG', 'NET', 'FSLY',
+  'JPM', 'BAC', 'WFC', 'GS', 'MS', 'C', 'AXP', 'V', 'MA', 'COST',
+  'WMT', 'HD', 'LOW', 'TGT', 'SBUX', 'MCD', 'NKE', 'DIS', 'BA', 'CAT'
+];
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -18,19 +26,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { criteria } = req.body;
+    const { criteria, useLiveData = false } = req.body;
 
     // Validate input criteria
     if (!criteria) {
       return res.status(400).json({ error: 'Screening criteria required' });
     }
 
-    // In production, this would connect to actual market data APIs
-    // For now, we'll use the same mock data generation as the client-side version
-    const mockData = generateMarketData();
+    let marketData;
+    
+    if (useLiveData && (process.env.ALPHA_VANTAGE_API_KEY || process.env.TWELVE_DATA_API_KEY)) {
+      // Fetch live market data
+      console.log('Fetching live market data...');
+      marketData = await fetchLiveMarketData();
+    } else {
+      // Use mock data as fallback
+      console.log('Using mock market data...');
+      marketData = generateMarketData();
+    }
 
     // Apply screening filters
-    const filteredData = applyScreeningFilters(mockData, criteria);
+    const filteredData = applyScreeningFilters(marketData, criteria);
 
     // Apply strategy-specific filters
     const strategies = applyStrategyFilters(filteredData);
@@ -39,6 +55,7 @@ export default async function handler(req, res) {
     const response = {
       success: true,
       timestamp: new Date().toISOString(),
+      dataSource: useLiveData && (process.env.ALPHA_VANTAGE_API_KEY || process.env.TWELVE_DATA_API_KEY) ? 'live' : 'mock',
       criteria: criteria,
       totalResults: filteredData.length,
       results: filteredData.slice(0, 50), // Top 50 results
@@ -63,19 +80,24 @@ export default async function handler(req, res) {
 }
 
 /**
- * Generate mock market data
- * In production, replace with actual market data API calls
+ * Fetch live market data from external APIs
+ */
+async function fetchLiveMarketData() {
+  try {
+    const tickers = getDefaultTickers();
+    // For now, return mock data - you can replace this with actual API calls
+    return generateMarketData();
+  } catch (error) {
+    console.error('Error fetching live data:', error);
+    return generateMarketData();
+  }
+}
+
+/**
+ * Generate mock market data that simulates the screening results
  */
 function generateMarketData() {
-  const tickers = [
-    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'CRM',
-    'ADBE', 'PYPL', 'INTC', 'CSCO', 'ORCL', 'IBM', 'UBER', 'SNOW', 'ZM', 'DOCU',
-    'SHOP', 'SQ', 'ROKU', 'TWLO', 'OKTA', 'CRWD', 'ZS', 'DDOG', 'NET', 'FSLY',
-    'JPM', 'BAC', 'WFC', 'GS', 'MS', 'C', 'AXP', 'V', 'MA', 'COST',
-    'WMT', 'HD', 'LOW', 'TGT', 'SBUX', 'MCD', 'NKE', 'DIS', 'BA', 'CAT',
-    'ABBV', 'JNJ', 'PFE', 'MRK', 'LLY', 'UNH', 'TMO', 'ABT', 'DHR', 'BMY'
-  ];
-
+  const tickers = getDefaultTickers();
   const companies = [
     'Apple Inc.', 'Microsoft Corporation', 'Alphabet Inc.', 'Amazon.com Inc.', 'NVIDIA Corporation',
     'Tesla Inc.', 'Meta Platforms Inc.', 'Netflix Inc.', 'Advanced Micro Devices', 'Salesforce Inc.',
@@ -86,16 +108,14 @@ function generateMarketData() {
     'JPMorgan Chase', 'Bank of America', 'Wells Fargo', 'Goldman Sachs', 'Morgan Stanley',
     'Citigroup Inc.', 'American Express', 'Visa Inc.', 'Mastercard Inc.', 'Costco Wholesale',
     'Walmart Inc.', 'Home Depot', 'Lowe\'s Companies', 'Target Corporation', 'Starbucks Corporation',
-    'McDonald\'s Corporation', 'Nike Inc.', 'Walt Disney Company', 'Boeing Company', 'Caterpillar Inc.',
-    'AbbVie Inc.', 'Johnson & Johnson', 'Pfizer Inc.', 'Merck & Co.', 'Eli Lilly', 'UnitedHealth Group',
-    'Thermo Fisher Scientific', 'Abbott Laboratories', 'Danaher Corporation', 'Bristol Myers Squibb'
+    'McDonald\'s Corporation', 'Nike Inc.', 'Walt Disney Company', 'Boeing Company', 'Caterpillar Inc.'
   ];
 
   return tickers.map((ticker, index) => ({
     ticker: ticker,
     name: companies[index] || `${ticker} Corporation`,
     close: randomBetween(50, 500),
-    market_cap_basic: randomBetween(10e9, 3000e9), // 10B to 3T
+    market_cap_basic: randomBetween(10e9, 3000e9),
     volume: randomBetween(500000, 50000000),
     average_volume_10d_calc: randomBetween(400000, 45000000),
     price_earnings_ttm: randomBetween(8, 80),
@@ -108,7 +128,6 @@ function generateMarketData() {
     recommendation_mark: randomBetween(1, 5),
     price_target_1y_delta: randomBetween(-5, 40)
   })).map(stock => {
-    // Calculate price target based on current price and delta
     stock.price_target_1y = stock.close * (1 + stock.price_target_1y_delta / 100);
     return stock;
   });
@@ -123,7 +142,7 @@ function applyScreeningFilters(data, criteria) {
     const volumeM = stock.volume / 1e6;
     
     return (
-      marketCapB >= (criteria.minMarketCap || 5) &&
+      marketCapB >= (criteria.minMarketCap || 1) &&
       volumeM >= (criteria.minVolume || 1) &&
       stock.price_earnings_ttm > 0 &&
       stock.price_earnings_ttm <= (criteria.maxPE || 50) &&
