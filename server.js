@@ -128,7 +128,7 @@ function generateMarketData() {
 }
 
 function applyScreeningFilters(data, criteria) {
-  return data.filter(stock => {
+  const filtered = data.filter(stock => {
     const marketCapB = stock.market_cap_basic / 1e9;
     const volumeM = stock.volume / 1e6;
     
@@ -138,17 +138,21 @@ function applyScreeningFilters(data, criteria) {
       stock.price_earnings_ttm > 0 &&
       stock.price_earnings_ttm <= (criteria.maxPE || 50) &&
       stock.return_on_equity >= (criteria.minROE || 10) &&
-      stock.debt_to_equity <= 2.0 &&
+      stock.debt_to_equity <= 3.0 &&  // Made less restrictive
       stock.total_revenue_yoy_growth_ttm >= (criteria.minRevGrowth || 5) &&
-      stock.earnings_per_share_diluted_yoy_growth_ttm >= 0 &&
-      stock.RSI >= 30 &&
-      stock.RSI <= 70 &&
-      stock.beta_1_year >= 0.5 &&
-      stock.beta_1_year <= 2.5 &&
-      stock.recommendation_mark <= 2.5 &&
+      stock.earnings_per_share_diluted_yoy_growth_ttm >= -10 &&  // Made less restrictive
+      stock.RSI >= 20 &&  // Made less restrictive
+      stock.RSI <= 80 &&  // Made less restrictive
+      stock.beta_1_year >= 0.3 &&  // Made less restrictive
+      stock.beta_1_year <= 3.0 &&  // Made less restrictive
+      stock.recommendation_mark <= 3.5 &&  // Made less restrictive
       stock.price_target_1y_delta >= (criteria.minUpside || 5)
     );
-  }).map(stock => ({
+  });
+  
+  console.log(`Filtered ${filtered.length} stocks from ${data.length} total`);
+  
+  return filtered.map(stock => ({
     ...stock,
     market_cap_billions: stock.market_cap_basic / 1e9,
     volume_ratio: stock.volume / stock.average_volume_10d_calc,

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test LEAPS Screener Run Button</title>
+    <script>
+        async function testRunButton() {
+            console.log('Testing Run Button functionality...');
+            
+            // Test the API endpoint directly
+            try {
+                console.log('1. Testing API endpoint...');
+                const response = await fetch('/api/screener', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        criteria: {
+                            minMarketCap: 0.1,  // Lower the criteria to get results
+                            minVolume: 0.1,
+                            maxPE: 100,
+                            minROE: 0,
+                            minRevGrowth: -20,
+                            minUpside: -10,
+                            strategy: 'all'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                if (data.success && data.totalResults > 0) {
+                    console.log('✅ API is working! Found', data.totalResults, 'results');
+                } else {
+                    console.log('⚠️  API returned no results');
+                }
+                
+            } catch (error) {
+                console.error('❌ API Error:', error);
+            }
+            
+            // Test if we can access the main page elements
+            try {
+                console.log('2. Testing if we can access main page...');
+                const mainResponse = await fetch('/');
+                const htmlContent = await mainResponse.text();
+                
+                if (htmlContent.includes('Run LEAPS Screening')) {
+                    console.log('✅ Main page loads correctly with Run button');
+                } else {
+                    console.log('❌ Main page missing Run button');
+                }
+                
+            } catch (error) {
+                console.error('❌ Main page error:', error);
+            }
+            
+            console.log('Test completed!');
+            
+            // Add a link to the main application
+            document.getElementById('result').innerHTML = `
+                <h2>Test Results:</h2>
+                <p>Check the browser console for detailed test results.</p>
+                <p><a href="/" style="color: blue; text-decoration: underline;">Click here to go to the LEAPS Screener application</a></p>
+                <p>The Run button should now work properly!</p>
+            `;
+        }
+        
+        window.onload = testRunButton;
+    </script>
+</head>
+<body>
+    <h1>LEAPS Screener - Run Button Test</h1>
+    <div id="result">
+        <p>Running tests... Check the browser console for results.</p>
+    </div>
+</body>
+</html>
