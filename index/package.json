@@ -1,0 +1,43 @@
+{
+  "name": "leaps-opportunity-screener",
+  "version": "1.0.0",
+  "description": "A comprehensive screening tool for identifying high-quality LEAPS trading opportunities",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "npm run copy-assets",
+    "copy-assets": "mkdir -p public && cp -r *.html css js public/",
+    "start": "vercel dev --listen 3000",
+    "deploy": "vercel --prod",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "leaps",
+    "options",
+    "trading",
+    "screener",
+    "finance",
+    "investment",
+    "vercel"
+  ],
+  "author": "LEAPS Screener Developer",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/leaps-opportunity-screener.git"
+  },
+  "homepage": "https://your-leaps-screener.vercel.app",
+  "bugs": {
+    "url": "https://github.com/your-username/leaps-opportunity-screener/issues"
+  }
+}
