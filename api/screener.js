@@ -26,12 +26,20 @@ export default function handler(req, res) {
   }
 
   try {
-    const { criteria, useLiveData = false } = req.body;
+    const { criteria = {}, useLiveData = false } = req.body || {};
 
-    // Validate input criteria
-    if (!criteria) {
-      return res.status(400).json({ error: 'Screening criteria required' });
-    }
+    // Set default criteria if not provided
+    const screeningCriteria = {
+      minMarketCap: criteria.minMarketCap || 0.1,
+      minVolume: criteria.minVolume || 0.1,
+      maxPE: criteria.maxPE || 100,
+      minROE: criteria.minROE || -50,
+      minRevGrowth: criteria.minRevGrowth || -50,
+      minUpside: criteria.minUpside || -50,
+      strategy: criteria.strategy || 'all'
+    };
+
+    console.log('Screening criteria:', screeningCriteria);
 
     let marketData;
     
@@ -46,7 +54,7 @@ export default function handler(req, res) {
     }
 
     // Apply screening filters
-    const filteredData = applyScreeningFilters(marketData, criteria);
+    const filteredData = applyScreeningFilters(marketData, screeningCriteria);
 
     // Apply strategy-specific filters
     const strategies = applyStrategyFilters(filteredData);
@@ -56,7 +64,7 @@ export default function handler(req, res) {
       success: true,
       timestamp: new Date().toISOString(),
       dataSource: useLiveData && (process.env.ALPHA_VANTAGE_API_KEY || process.env.TWELVE_DATA_API_KEY) ? 'live' : 'mock',
-      criteria: criteria,
+      criteria: screeningCriteria,
       totalResults: filteredData.length,
       results: filteredData.slice(0, 50), // Top 50 results
       strategies: {
@@ -73,9 +81,12 @@ export default function handler(req, res) {
 
   } catch (error) {
     console.error('API Error:', error);
+    console.error('Request body:', req.body);
     return res.status(500).json({ 
+      success: false,
       error: 'Internal server error',
-      message: error.message 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
@@ -142,25 +153,27 @@ function applyScreeningFilters(data, criteria) {
     const marketCapB = stock.market_cap_basic / 1e9;
     const volumeM = stock.volume / 1e6;
     
-    return (
-      marketCapB >= (criteria.minMarketCap || 1) &&
-      volumeM >= (criteria.minVolume || 1) &&
+    const passes = (
+      marketCapB >= criteria.minMarketCap &&
+      volumeM >= criteria.minVolume &&
       stock.price_earnings_ttm > 0 &&
-      stock.price_earnings_ttm <= (criteria.maxPE || 50) &&
-      stock.return_on_equity >= (criteria.minROE || 10) &&
-      stock.debt_to_equity <= 3.0 &&  // Made less restrictive
-      stock.total_revenue_yoy_growth_ttm >= (criteria.minRevGrowth || 5) &&
-      stock.earnings_per_share_diluted_yoy_growth_ttm >= -10 &&  // Made less restrictive
-      stock.RSI >= 20 &&  // Made less restrictive
-      stock.RSI <= 80 &&  // Made less restrictive
-      stock.beta_1_year >= 0.3 &&  // Made less restrictive
-      stock.beta_1_year <= 3.0 &&  // Made less restrictive
-      stock.recommendation_mark <= 3.5 &&  // Made less restrictive
-      stock.price_target_1y_delta >= (criteria.minUpside || 5)
+      stock.price_earnings_ttm <= criteria.maxPE &&
+      stock.return_on_equity >= criteria.minROE &&
+      stock.debt_to_equity <= 5.0 &&  // Very lenient
+      stock.total_revenue_yoy_growth_ttm >= criteria.minRevGrowth &&
+      stock.earnings_per_share_diluted_yoy_growth_ttm >= -50 &&  // Very lenient
+      stock.RSI >= 10 &&  // Very lenient
+      stock.RSI <= 90 &&  // Very lenient
+      stock.beta_1_year >= 0.1 &&  // Very lenient
+      stock.beta_1_year <= 5.0 &&  // Very lenient
+      stock.recommendation_mark <= 5.0 &&  // Very lenient
+      stock.price_target_1y_delta >= criteria.minUpside
     );
+    
+    return passes;
   });
   
-  console.log(`Filtered ${filtered.length} stocks from ${data.length} total`);
+  console.log(`API Filtering: ${filtered.length} stocks from ${data.length} total with criteria:`, criteria);
   
   return filtered.map(stock => ({
     ...stock,
