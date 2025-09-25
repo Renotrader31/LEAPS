@@ -97,17 +97,19 @@ class LEAPSScreener {
                     stock.price_earnings_ttm > 0 &&
                     stock.price_earnings_ttm <= this.screeningCriteria.maxPE &&
                     stock.return_on_equity >= this.screeningCriteria.minROE &&
-                    stock.debt_to_equity <= 2.0 &&
+                    stock.debt_to_equity <= 3.0 &&  // Made less restrictive
                     stock.total_revenue_yoy_growth_ttm >= this.screeningCriteria.minRevGrowth &&
-                    stock.earnings_per_share_diluted_yoy_growth_ttm >= 0 &&
-                    stock.RSI >= 30 &&
-                    stock.RSI <= 70 &&
-                    stock.beta_1_year >= 0.5 &&
-                    stock.beta_1_year <= 2.5 &&
-                    stock.recommendation_mark <= 2.5 &&
+                    stock.earnings_per_share_diluted_yoy_growth_ttm >= -10 &&  // Made less restrictive
+                    stock.RSI >= 20 &&  // Made less restrictive
+                    stock.RSI <= 80 &&  // Made less restrictive
+                    stock.beta_1_year >= 0.3 &&  // Made less restrictive
+                    stock.beta_1_year <= 3.0 &&  // Made less restrictive
+                    stock.recommendation_mark <= 3.5 &&  // Made less restrictive
                     stock.price_target_1y_delta >= this.screeningCriteria.minUpside
                 );
             });
+
+            console.log(`Client-side filtering: ${filteredData.length} stocks from ${this.mockData.length} total`);
 
             // Calculate additional metrics
             filteredData = filteredData.map(stock => ({
