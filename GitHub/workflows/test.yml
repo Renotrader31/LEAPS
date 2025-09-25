@@ -1,0 +1,141 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Validate HTML structure
+      run: |
+        echo "Validating HTML files..."
+        # Check for basic HTML structure
+        if ! grep -q "<!DOCTYPE html>" index.html; then
+          echo "Error: Missing DOCTYPE in index.html"
+          exit 1
+        fi
+        if ! grep -q "<html" index.html; then
+          echo "Error: Missing html tag in index.html"
+          exit 1
+        fi
+        echo "HTML validation passed ✅"
+
+    - name: Validate JavaScript syntax
+      run: |
+        echo "Validating JavaScript files..."
+        # Check if JavaScript files exist and have basic syntax
+        for js_file in js/*.js; do
+          if [ -f "$js_file" ]; then
+            echo "Checking $js_file..."
+            node -c "$js_file" || exit 1
+          fi
+        done
+        echo "JavaScript validation passed ✅"
+
+    - name: Check API endpoints
+      run: |
+        echo "Validating API endpoints..."
+        # Check if API files exist and have basic structure
+        for api_file in api/*.js; do
+          if [ -f "$api_file" ]; then
+            echo "Checking $api_file..."
+            node -c "$api_file" || exit 1
+            # Check for export default
+            if ! grep -q "export default" "$api_file"; then
+              echo "Warning: $api_file may be missing export default"
+            fi
+          fi
+        done
+        echo "API validation passed ✅"
+
+    - name: Validate package.json
+      run: |
+        echo "Validating package.json..."
+        npm run build --if-present
+        echo "Package.json validation passed ✅"
+
+    - name: Check Vercel configuration
+      run: |
+        echo "Validating Vercel configuration..."
+        if [ -f "vercel.json" ]; then
+          # Basic JSON syntax check
+          node -e "JSON.parse(require('fs').readFileSync('vercel.json', 'utf8'))" || exit 1
+          echo "Vercel.json validation passed ✅"
+        else
+          echo "Warning: vercel.json not found"
+        fi
+
+    - name: Security audit
+      run: |
+        echo "Running security audit..."
+        npm audit --audit-level=high
+        echo "Security audit completed ✅"
+
+  accessibility:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Basic accessibility checks
+      run: |
+        echo "Running basic accessibility checks..."
+        # Check for alt attributes, title tags, etc.
+        if ! grep -q "alt=" index.html; then
+          echo "Warning: No alt attributes found in HTML"
+        fi
+        if ! grep -q "<title>" index.html; then
+          echo "Error: Missing title tag in index.html"
+          exit 1
+        fi
+        echo "Basic accessibility checks completed ✅"
+
+  performance:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check file sizes
+      run: |
+        echo "Checking file sizes..."
+        # Check if any single file is too large (>1MB)
+        find . -name "*.js" -o -name "*.css" -o -name "*.html" | while read file; do
+          size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null)
+          if [ "$size" -gt 1048576 ]; then
+            echo "Warning: $file is larger than 1MB ($size bytes)"
+          fi
+        done
+        echo "File size check completed ✅"
+
+    - name: Check for CDN usage
+      run: |
+        echo "Checking for CDN usage..."
+        if grep -q "cdn\." index.html; then
+          echo "✅ CDN usage detected"
+        else
+          echo "Warning: No CDN usage detected"
+        fi
