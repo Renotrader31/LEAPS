@@ -5,7 +5,7 @@
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
 
-export default async function handler(req, res) {
+const handler = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -180,7 +180,7 @@ function calculatePriceTargetDelta(currentPrice, targetPrice) {
 /**
  * Get default tickers for screening
  */
-export function getDefaultTickers() {
+function getDefaultTickers() {
   return [
     'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'CRM',
     'ADBE', 'PYPL', 'INTC', 'CSCO', 'ORCL', 'IBM', 'UBER', 'SNOW', 'ZM', 'DOCU',
@@ -189,3 +189,7 @@ export function getDefaultTickers() {
     'WMT', 'HD', 'LOW', 'TGT', 'SBUX', 'MCD', 'NKE', 'DIS', 'BA', 'CAT'
   ];
 }
+
+// Export for Vercel
+module.exports = handler;
+export default handler;

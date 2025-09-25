@@ -11,7 +11,7 @@ const getDefaultTickers = () => [
   'WMT', 'HD', 'LOW', 'TGT', 'SBUX', 'MCD', 'NKE', 'DIS', 'BA', 'CAT'
 ];
 
-export default async function handler(req, res) {
+export default function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     if (useLiveData && (process.env.ALPHA_VANTAGE_API_KEY || process.env.TWELVE_DATA_API_KEY)) {
       // Fetch live market data
       console.log('Fetching live market data...');
-      marketData = await fetchLiveMarketData();
+      marketData = fetchLiveMarketData();
     } else {
       // Use mock data as fallback
       console.log('Using mock market data...');
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
 /**
  * Fetch live market data from external APIs
  */
-async function fetchLiveMarketData() {
+function fetchLiveMarketData() {
   try {
     const tickers = getDefaultTickers();
     // For now, return mock data - you can replace this with actual API calls
